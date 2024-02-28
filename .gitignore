@@ -1,0 +1,8 @@
+__pycache__/
+archive/
+ds_out/
+ds/
+ds_old/
+logs/
+out/
+queenless/
