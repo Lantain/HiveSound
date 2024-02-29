@@ -20,18 +20,16 @@ def waveform_to_spectrogram(waveform):
   spectrogram = spectrogram[..., tf.newaxis]
   return spectrogram
 
-def waveform_to_mfcc(waveform, sample_rate=44100, num_mfccs=13):
+def waveform_to_mfcc(waveform, sample_rate=44100, num_mfccs=16):
   stfts = tf.signal.stft(waveform, frame_length=1024, frame_step=256, fft_length=1024)
   spectrograms = tf.abs(stfts)
-
+  num_spectrogram_bins = stfts.shape[-1]#.value
+  print(num_spectrogram_bins, sample_rate)
+  lower_edge_hertz, upper_edge_hertz, num_mel_bins = 80.0, 7600.0, 80
   # Warp the linear scale spectrograms into the mel-scale.
   linear_to_mel_weight_matrix = tf.signal.linear_to_mel_weight_matrix(
-    sample_rate, 
-    num_spectrogram_bins = stfts.shape[-1].value, 
-    num_mel_bins = 80, 
-    lower_edge_hertz = 80.0, 
-    upper_edge_hertz = 7600.0
-  )
+  num_mel_bins, num_spectrogram_bins, sample_rate, lower_edge_hertz,
+  upper_edge_hertz)
   mel_spectrograms = tf.tensordot(spectrograms, linear_to_mel_weight_matrix, 1)
   mel_spectrograms.set_shape(spectrograms.shape[:-1].concatenate(linear_to_mel_weight_matrix.shape[-1:]))
 
@@ -50,3 +48,8 @@ def to_spectrogram_dataset(ds):
       num_parallel_calls=tf.data.AUTOTUNE
   )
 
+def to_mfccs_dataset(ds):
+  return ds.map(
+      map_func=lambda audio,label: (waveform_to_mfcc(audio), label),
+      num_parallel_calls=tf.data.AUTOTUNE
+  )

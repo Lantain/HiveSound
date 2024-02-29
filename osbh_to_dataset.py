@@ -6,8 +6,8 @@ import math
 import pandas as pd
 from pydub import AudioSegment
 
-DS_DIR =  "./ds" #"./archive" # "./ds" # "./archive"
-
+DS_DIR = "./dataset/archive" #"./dataset/ds" #"./dataset/archive" # "./dataset/ds" # "./dataset/archive"
+OUT_DIR = "./dataset/osbh"
 class Section:
     time_from: float
     time_to: float
@@ -38,7 +38,7 @@ class Section:
         basename = os.path.basename(self.src).replace(".lab", "")
         sound_file = f"{DS_DIR}/{basename}.wav"
 
-        out_file = f"./out/{self.label}/{self.status}_{basename}.wav"
+        # out_file = f"./out/{self.label}/{self.status}_{basename}.wav"
 
         if (not os.path.exists(sound_file)):
             sound_file = f"{DS_DIR}/{basename}.mp3" 
@@ -51,15 +51,15 @@ class Section:
             if len(a) > 4000:
                 for i in range(math.ceil(len(a) / 4000)):
                     chunk = a[i * 4000:(i + 1) * 4000]
-                    if not os.path.exists(f"./queenless/{self.status}"):
-                        os.makedirs(f"./queenless/{self.status}")
+                    if not os.path.exists(f"{OUT_DIR}/{self.status}"):
+                        os.makedirs(f"{OUT_DIR}/{self.status}")
                     if (len(chunk) == 4000):
                         mono_audios = chunk.split_to_mono()
                         mono_left = mono_audios[0]
-                        mono_left.export(f"./queenless/{self.status}/{basename}_{i}.wav", format="wav")
+                        mono_left.export(f"{OUT_DIR}/{self.status}/{basename}_{i}.wav", format="wav")
                 return
             
-            a.export(out_file, format="wav")
+            # a.export(out_file, format="wav")
         except Exception as e:
             print(f"Failed to export {self.time_from} to {self.time_to} from file {self.src} length {len(audio)}")
         # print(f"Sliced {self.src} from {self.time_from} to {self.time_to}: {out_file}")
@@ -102,13 +102,10 @@ for file in files:
                     line[2].strip()
                 )
             )
-
 try:
-    os.makedirs("./out")
-    os.makedirs("./queenless")
-    os.makedirs("./out/bee")
-    os.makedirs("./out/nobee")
-
+    os.makedirs("./out", exist_ok=True)
+    os.makedirs("./dataset", exist_ok=True)
+    os.makedirs(OUT_DIR, exist_ok=True)
 except:
     pass
 

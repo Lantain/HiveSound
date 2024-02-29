@@ -2,13 +2,15 @@ import tensorflow as tf
 import numpy as np
 import os
 import librosa
+import math
 
-from audio import to_spectrogram_dataset, preprocess_mel_item, waveform_to_spectrogram
+from src.audio import to_spectrogram_dataset, preprocess_mel_item, waveform_to_spectrogram, waveform_to_mfcc
+from pydub import AudioSegment
 
 
 def squeeze(audio, labels):
-  print(f"Audio shape: {audio.shape}")
-  print(f"Audio shape: {audio[0].shape}")
+#   print(f"Audio shape: {audio.shape}")
+#   print(f"Audio shape: {audio[0].shape}")
   #remove first and last dimention of tensor
 
   audio = tf.squeeze(audio, axis=-1)
@@ -40,11 +42,12 @@ def dataset_tf(dir: str):
         label = label_names[example_labels[i]]
         waveform = example_audio[i]
         spectrogram = waveform_to_spectrogram(waveform)
+        mfccs = waveform_to_mfcc(waveform)
 
         print('Label:', label)
         print('Waveform shape:', waveform.shape)
+        print('MFCCs shape:', mfccs.shape)
         print('Spectrogram shape:', spectrogram.shape)
-        print('Audio playback')
 
     return train_ds, val_ds, label_names
 
@@ -72,6 +75,22 @@ def preprocess_data(data, target_shape=(128, 128)):
         spectrograms.append(preprocess_mel_item(audio_data, sample_rate, target_shape))
     return np.array(spectrograms)
 
-def dataset_raw(data_dir: str, classes: list[str]):
+def dataset_raw(data_dir: str):
+    classes = os.listdir(data_dir)
     data, labels = load_data(data_dir, classes)
-    return data, labels
+    return data, labels, classes
+
+def segments_from_audio_file(audio_src: str, segment_length=4000):
+    try:
+        audio = AudioSegment.from_file(audio_src)
+        segments = list()
+        audio_len = len(audio)
+        if audio_len > segment_length:
+            for i in range(math.ceil(len(audio_len) / 4000)):
+                chunk = audio[i * 4000:(i + 1) * 4000]
+                if (len(chunk) == 4000):
+                    mono_audios = chunk.split_to_mono()
+                    mono_left = mono_audios[0]
+        return segments
+    except Exception as e:
+        print(f"Failed to export from file {audio_src} length {len(audio)}")

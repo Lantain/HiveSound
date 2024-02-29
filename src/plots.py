@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib import cm
 import librosa
 import numpy as np
 import librosa.display as ld
@@ -57,6 +58,11 @@ def plot_spectrogram(spectrogram, ax):
 	Y = range(height)
 	ax.pcolormesh(X, Y, log_spec)
 
+def plot_mfcc(mfcc_data, ax):
+	mfcc_data= np.swapaxes(mfcc_data, 0 ,1)
+	cax = ax.imshow(mfcc_data, interpolation='nearest', cmap=cm.coolwarm, origin='lower')
+	ax.set_title('MFCC')
+
 def plot_spectrograms(spectrograms: list, spectrogram_labels: list, classes: list):
 	rows = 3
 	cols = 3
@@ -71,6 +77,30 @@ def plot_spectrograms(spectrograms: list, spectrogram_labels: list, classes: lis
 		ax.set_title(classes[spectrogram_labels[i].numpy()])
 
 	plt.show()
+
+def plot_mfccs(mfccs: list, mfccs_labels: list, classes: list):
+	rows = 3
+	cols = 3
+	n = rows*cols
+	fig, axes = plt.subplots(rows, cols, figsize=(16, 9))
+
+	for i in range(n):
+		r = i // cols
+		c = i % cols
+		ax = axes[r][c]
+		plot_mfcc(mfccs[i].numpy(), ax)
+		ax.set_title(classes[mfccs_labels[i].numpy()])
+
+	plt.show()
+
+def show_mfccs(ds, classes):
+	for example_mfccs, example_mfccs_labels in ds.take(1):
+  		plot_spectrograms(example_mfccs, example_mfccs_labels, classes)
+# fig, ax = plt.subplots()
+# mfcc_data= np.swapaxes(mfcc_data, 0 ,1)
+# cax = ax.imshow(mfcc_data, interpolation='nearest', cmap=cm.coolwarm, origin='lower')
+# ax.set_title('MFCC')
+# plt.show()
 
 def show_spectrograms(ds, classes):
 	for example_spectrograms, example_spect_labels in ds.take(1):
