@@ -41,3 +41,9 @@ def get_seq_model(shape, num_labels: int, spectrogram_ds: list):
     Dense(num_labels),
   ])
   return model
+
+callbacks = [
+  tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', patience=6, start_from_epoch=6),
+  tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=4, start_from_epoch=6),
+  tf.keras.callbacks.EarlyStopping(monitor='accuracy', patience=6, start_from_epoch=6),
+]

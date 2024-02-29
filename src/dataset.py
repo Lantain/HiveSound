@@ -51,6 +51,40 @@ def dataset_tf(dir: str):
 
     return train_ds, val_ds, label_names
 
+def validation_tf(dir: str):
+    test_ds, ds = tf.keras.utils.audio_dataset_from_directory(
+        directory=dir,
+        batch_size=2,
+        validation_split=.99,
+        output_sequence_length=4000,
+        seed=0,
+        labels='inferred',
+        subset='both'
+    )
+    label_names = np.array(ds.class_names)
+    print("label names:", label_names)
+    print(ds.element_spec)
+
+    ds = ds.map(squeeze, tf.data.AUTOTUNE)
+
+    # Print examples brief
+    for example_audio, example_labels in ds.take(1):  
+        print(f"Example audio shape: {example_audio.shape}")
+        print(f"Example label shape: {example_labels.shape}")
+
+    for i in range(2):
+        label = label_names[example_labels[i]]
+        waveform = example_audio[i]
+        spectrogram = waveform_to_spectrogram(waveform)
+        mfccs = waveform_to_mfcc(waveform)
+
+        print('Label:', label)
+        print('Waveform shape:', waveform.shape)
+        print('MFCCs shape:', mfccs.shape)
+        print('Spectrogram shape:', spectrogram.shape)
+
+    return ds
+
 
 def load_data(data_dir, classes): 
     data = []
@@ -80,17 +114,18 @@ def dataset_raw(data_dir: str):
     data, labels = load_data(data_dir, classes)
     return data, labels, classes
 
-def segments_from_audio_file(audio_src: str, segment_length=4000):
-    try:
-        audio = AudioSegment.from_file(audio_src)
-        segments = list()
-        audio_len = len(audio)
-        if audio_len > segment_length:
-            for i in range(math.ceil(len(audio_len) / 4000)):
-                chunk = audio[i * 4000:(i + 1) * 4000]
-                if (len(chunk) == 4000):
-                    mono_audios = chunk.split_to_mono()
-                    mono_left = mono_audios[0]
-        return segments
-    except Exception as e:
-        print(f"Failed to export from file {audio_src} length {len(audio)}")
+def segments_from_audio_file(audio_src: str, segment_length=4000, start_from=0, end_at=None) -> list[AudioSegment]:
+    audio = AudioSegment.from_file(audio_src)
+    if end_at is None:
+        end_at = len(audio)
+    a = audio[start_from:end_at]
+    segments = list([])
+    audio_len = len(a)
+    if audio_len > segment_length:
+        for i in range(math.ceil(audio_len / 4000)):
+            chunk = a[i * 4000:(i + 1) * 4000]
+            if (len(chunk) == 4000):
+                mono_audios = chunk.split_to_mono()
+                mono_left = mono_audios[0]
+                segments.append(mono_left)
+    return segments

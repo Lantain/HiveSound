@@ -5,9 +5,10 @@ import re
 import math
 import pandas as pd
 from pydub import AudioSegment
+from src.dataset import segments_from_audio_file
 
 DS_DIR = "./dataset/archive" #"./dataset/ds" #"./dataset/archive" # "./dataset/ds" # "./dataset/archive"
-OUT_DIR = "./dataset/osbh"
+OUT_DIR = "./dataset/osbh_pure"
 class Section:
     time_from: float
     time_to: float
@@ -37,31 +38,24 @@ class Section:
     def slice(self):
         basename = os.path.basename(self.src).replace(".lab", "")
         sound_file = f"{DS_DIR}/{basename}.wav"
-
+        if self.label == "nobee":
+            print("NOBEE skip")
+            return
         # out_file = f"./out/{self.label}/{self.status}_{basename}.wav"
 
         if (not os.path.exists(sound_file)):
             sound_file = f"{DS_DIR}/{basename}.mp3" 
             if (not os.path.exists(sound_file)):
                 return
-        audio = AudioSegment.from_file(sound_file)
-        try: 
-            a = audio[self.time_from * 1000:min(self.time_to * 1000, len(audio))]
-            # split audio slice to 4 seconds chunks
-            if len(a) > 4000:
-                for i in range(math.ceil(len(a) / 4000)):
-                    chunk = a[i * 4000:(i + 1) * 4000]
-                    if not os.path.exists(f"{OUT_DIR}/{self.status}"):
-                        os.makedirs(f"{OUT_DIR}/{self.status}")
-                    if (len(chunk) == 4000):
-                        mono_audios = chunk.split_to_mono()
-                        mono_left = mono_audios[0]
-                        mono_left.export(f"{OUT_DIR}/{self.status}/{basename}_{i}.wav", format="wav")
-                return
             
-            # a.export(out_file, format="wav")
+        try: 
+            segments = segments_from_audio_file(sound_file, 4000, self.time_from * 1000, self.time_to * 1000)
+            for i, seg in enumerate(segments):
+                print(f"Segment len {len(seg)} -> {self.status}/{basename}_{i}.wav")
+                os.makedirs(f"{OUT_DIR}/{self.status}", exist_ok=True)
+                seg.export(f"{OUT_DIR}/{self.status}/{basename}_{i}.wav", format="wav")
         except Exception as e:
-            print(f"Failed to export {self.time_from} to {self.time_to} from file {self.src} length {len(audio)}")
+            print(f"Failed to export {self.time_from} to {self.time_to} from file {self.src}: {e}")
         # print(f"Sliced {self.src} from {self.time_from} to {self.time_to}: {out_file}")
 
 sections: list[Section] = list()
