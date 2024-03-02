@@ -16,11 +16,11 @@ def squeeze(audio, labels):
   audio = tf.squeeze(audio, axis=-1)
   return audio, labels
 
-def dataset_tf(dir: str):
+def dataset_tf(dir: str, validation_split=0.2):
     train_ds, val_ds = tf.keras.utils.audio_dataset_from_directory(
         directory=dir,
         batch_size=32,
-        validation_split=0.2,
+        validation_split=validation_split,
         output_sequence_length=4000,
         seed=0,
         labels='inferred',

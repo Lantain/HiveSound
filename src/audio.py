@@ -22,6 +22,7 @@ def waveform_to_spectrogram(waveform):
 
 def waveform_to_mfcc(waveform, sample_rate=44100, num_mfccs=16):
   stfts = tf.signal.stft(waveform, frame_length=1024, frame_step=256, fft_length=1024)
+
   spectrograms = tf.abs(stfts)
   num_spectrogram_bins = stfts.shape[-1]#.value
   print(num_spectrogram_bins, sample_rate)

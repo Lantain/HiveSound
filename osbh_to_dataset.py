@@ -1,4 +1,4 @@
-# find all .lab files in the directory, skip first line and sparate contents by tabs
+# https://www.kaggle.com/datasets/chrisfilo/to-bee-or-no-to-bee/data
 import os
 import csv
 import re
