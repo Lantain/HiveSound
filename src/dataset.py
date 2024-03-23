@@ -16,10 +16,10 @@ def squeeze(audio, labels):
   audio = tf.squeeze(audio, axis=-1)
   return audio, labels
 
-def dataset_tf(dir: str, validation_split=0.2):
+def dataset_tf(dir: str, validation_split=0.2, batch_size=32):
     train_ds, val_ds = tf.keras.utils.audio_dataset_from_directory(
         directory=dir,
-        batch_size=32,
+        batch_size=batch_size,
         validation_split=validation_split,
         output_sequence_length=4000,
         seed=0,
