@@ -10,8 +10,7 @@ def preprocess_mel_item(y, sample_rate: int, target_shape=(128, 128)):
 
 def waveform_to_spectrogram(waveform):
   # Convert the waveform to a spectrogram via a STFT.
-  spectrogram = tf.signal.stft(
-      waveform, frame_length=255, frame_step=32)
+  spectrogram = tf.signal.stft(waveform, frame_length=255, frame_step=32)
   # Obtain the magnitude of the STFT.
   spectrogram = tf.abs(spectrogram)
   # Add a `channels` dimension, so that the spectrogram can be used
@@ -51,6 +50,6 @@ def to_spectrogram_dataset(ds):
 
 def to_mfccs_dataset(ds):
   return ds.map(
-      map_func=lambda audio,label: (waveform_to_mfcc(audio), label),
+      map_func=lambda audio,label: (waveform_to_mfcc(audio, 44100, 12), label),
       num_parallel_calls=tf.data.AUTOTUNE
   )

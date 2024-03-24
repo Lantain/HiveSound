@@ -1,8 +1,11 @@
 import tensorflow as tf
 import numpy as np
+import pandas as pd
 import os
+import shutil
 import librosa
 import math
+import random
 
 from src.audio import to_spectrogram_dataset, preprocess_mel_item, waveform_to_spectrogram, waveform_to_mfcc
 from pydub import AudioSegment
@@ -115,6 +118,9 @@ def dataset_raw(data_dir: str):
     return data, labels, classes
 
 def segments_from_audio_file(audio_src: str, segment_length=4000, start_from=0, end_at=None) -> list[AudioSegment]:
+    if os.path.exists(audio_src) is False:
+        return list()
+    
     audio = AudioSegment.from_file(audio_src)
     if end_at is None:
         end_at = len(audio)
@@ -129,3 +135,67 @@ def segments_from_audio_file(audio_src: str, segment_length=4000, start_from=0, 
                 mono_left = mono_audios[0]
                 segments.append(mono_left)
     return segments
+
+def create_sbcm_original(src_dir: str, out_dir: str, df: pd.DataFrame):
+    os.makedirs(out_dir, exist_ok=True)
+    os.makedirs(f"{out_dir}/queen", exist_ok=True)
+    os.makedirs(f"{out_dir}/noqueen", exist_ok=True)
+
+    files = os.listdir(src_dir)
+    for index, row in df.iterrows():
+        queen_status = row['queen status']
+        file_name = row['file name'].replace('.raw', '')
+
+        related_files = list()
+        for f in files:
+            if f.startswith(file_name):
+                related_files.append(f)
+        print(f"Queen Status: {queen_status}, File Name: {file_name}, Files: {related_files}")
+        for rf in related_files:
+            if queen_status == 0:
+                shutil.copyfile(f"{src_dir}/{rf}", f"{out_dir}/noqueen/{rf}")
+            if queen_status == 3:
+                shutil.copyfile(f"{src_dir}/{rf}", f"{out_dir}/queen/{rf}")
+
+
+def create_segmented_dataset_from_dir(orig_dir: str, out_dir: str):
+    os.makedirs(out_dir, exist_ok=True)
+
+    for label in list(["queen", "noqueen"]):
+        os.makedirs(f"{out_dir}/{label}", exist_ok=True)
+        files = os.listdir(f"{orig_dir}/{label}")
+        for file in files:
+            segments = segments_from_audio_file(f"{orig_dir}/{label}/{file}", 4000, 200, None)
+            print(f"{label} - File {file} segments: {len(segments)}")
+            for i, seg in enumerate(segments):
+                seg.set_sample_width(2)
+                seg.export(
+                    f"{out_dir}/{label}/{os.path.basename(file)}_{i}.wav", 
+                    format="wav", 
+                    bitrate='16k', 
+                    parameters=["-sample_fmt", "s16"]
+                )
+
+def create_dir_split_from(src_dir: str, train_dir: str, val_dir: str, val_files_count: int = 100, train_files_count: int = 100):
+    os.makedirs(train_dir, exist_ok=True)
+    os.makedirs(val_dir, exist_ok=True)
+
+    for label in list(["queen", "noqueen"]):
+        os.makedirs(f"{train_dir}/{label}", exist_ok=True)
+        os.makedirs(f"{val_dir}/{label}", exist_ok=True)
+        src_files = os.listdir(f"{src_dir}/{label}")
+        random.seed(0)
+        random.shuffle(src_files)
+        train_files = src_files[:train_files_count]
+        print(f"Train files: {len(train_files)}")
+        val_files = src_files[train_files_count:][:val_files_count]
+        print(f"Validation files: {len(val_files)}")
+        for file in train_files:
+            shutil.copyfile(f"{src_dir}/{label}/{file}", f"{train_dir}/{label}/{file}")
+        for file in val_files:
+            shutil.copyfile(f"{src_dir}/{label}/{file}", f"{val_dir}/{label}/{file}")
+
+
+
+
+
