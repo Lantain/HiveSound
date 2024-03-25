@@ -69,7 +69,7 @@ def plot_spectrograms(spectrograms: list, spectrogram_labels: list, classes: lis
 	n = rows*cols
 	fig, axes = plt.subplots(rows, cols, figsize=(16, 9))
 
-	for i in range(n):
+	for i in range(min(n, len(spectrograms))):
 		r = i // cols
 		c = i % cols
 		ax = axes[r][c]
@@ -84,7 +84,7 @@ def plot_mfccs(mfccs: list, mfccs_labels: list, classes: list):
 	n = rows*cols
 	fig, axes = plt.subplots(rows, cols, figsize=(16, 9))
 
-	for i in range(n):
+	for i in range(min(n, len(mfccs))):
 		r = i // cols
 		c = i % cols
 		ax = axes[r][c]
@@ -136,3 +136,33 @@ def plot_history(history):
 	plt.ylim([0, 100])
 	plt.xlabel('Epoch')
 	plt.ylabel('Accuracy [%]')
+
+def compare_spectrograms(path1, path2):
+    y1, sr1 = librosa.load(path1)
+    y2, sr2 = librosa.load(path2)
+
+    fig, axs = plt.subplots(1, 2, figsize=(20, 6))
+    
+    # Plot the first spectrogram
+    D = librosa.amplitude_to_db(np.abs(librosa.stft(y1)), ref=np.max)
+    librosa.display.specshow(D, sr=sr1, x_axis='time', y_axis='log', ax=axs[0])
+    # axs[0].imshow(D, aspect='auto', origin='lower')
+    axs[0].set_title('Spectrogram 1')
+
+    # Plot the second spectrogram
+    D = librosa.amplitude_to_db(np.abs(librosa.stft(y2)), ref=np.max)
+    librosa.display.specshow(D, sr=sr2, x_axis='time', y_axis='log', ax=axs[1])
+    axs[1].set_title('Spectrogram 2')
+
+    plt.show()
+
+def visualize_spectrogram(path):
+    y, sr = librosa.load(path)
+    # Visualize the spectrogram
+    # display(IPython.display.Audio(y, rate = sr))
+    plt.figure(figsize=(10, 4))
+    D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
+    librosa.display.specshow(D, sr=sr, x_axis='time', y_axis='log')
+    plt.colorbar(format='%+2.0f dB')
+    plt.title('Spectrogram of ' + path)
+    plt.show()

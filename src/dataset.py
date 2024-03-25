@@ -6,6 +6,7 @@ import shutil
 import librosa
 import math
 import random
+import tensorflow_io as tfio
 
 from src.audio import to_spectrogram_dataset, preprocess_mel_item, waveform_to_spectrogram, waveform_to_mfcc
 from pydub import AudioSegment
@@ -136,6 +137,22 @@ def segments_from_audio_file(audio_src: str, segment_length=4000, start_from=0, 
                 segments.append(mono_left)
     return segments
 
+def tfio_segments_from_audio_file(audio_src: str, segment_length=4000, start_from=0, end_at=None) -> list:
+    audio = tfio.audio.AudioIOTensor(audio_src, tf.float32)
+    if end_at is None:
+        end_at = len(audio)
+    a = audio[start_from:end_at]
+    segments = list([])
+    audio_len = len(a)
+    if audio_len > segment_length:
+        for i in range(math.ceil(audio_len / 4000)):
+            chunk = a[i * 4000:(i + 1) * 4000]
+            if (len(chunk) == 4000):
+                if audio.dtype == tf.int16:
+                    chunk = tf.cast(chunk, tf.float32) / 32768.0
+                segments.append(tf.squeeze(chunk, axis=[-1]) )
+    return segments
+
 def create_sbcm_original(src_dir: str, out_dir: str, df: pd.DataFrame):
     os.makedirs(out_dir, exist_ok=True)
     os.makedirs(f"{out_dir}/queen", exist_ok=True)
@@ -194,6 +211,30 @@ def create_dir_split_from(src_dir: str, train_dir: str, val_dir: str, val_files_
             shutil.copyfile(f"{src_dir}/{label}/{file}", f"{train_dir}/{label}/{file}")
         for file in val_files:
             shutil.copyfile(f"{src_dir}/{label}/{file}", f"{val_dir}/{label}/{file}")
+
+def file_mfccs(file_src: str):
+    segments = segments_from_audio_file(file_src)
+    mfccs = [waveform_to_mfcc(seg) for seg in segments]
+    return mfccs
+
+def validate_on(dir: str, model):
+    for label in list(["queen", "noqueen"]):
+        print(f"\n=== {label} ===")
+        files = os.listdir(f"{dir}/{label}")
+        for file in files:
+            mfccs = file_mfccs(dir + '/' + file)
+            predictions = list([0, 0])
+            for mfcc in mfccs:
+                try:
+                    mfcc_batch = np.expand_dims(mfcc, axis=0)
+                    res = model.predict(mfcc_batch, verbose=0)
+                    predictions[0] = predictions[0] + res[0][0]
+                    predictions[1] = predictions[1] + res[0][1]
+                except Exception as e:
+                    print(f"Error in {file}:", e)
+
+            mid_preds = np.array(predictions) / len(mfccs)
+            print(f"File {label}/{file} predictions: NQ:{mid_preds[0]:.2f}  Q:{mid_preds[1]:.2f}")
 
 
 
