@@ -161,18 +161,24 @@ def create_sbcm_original(src_dir: str, out_dir: str, df: pd.DataFrame):
     files = os.listdir(src_dir)
     for index, row in df.iterrows():
         queen_status = row['queen status']
+        queen_presence = row['queen presence']
+        queen_acceptance = row['queen acceptance']
         file_name = row['file name'].replace('.raw', '')
 
         related_files = list()
         for f in files:
             if f.startswith(file_name):
                 related_files.append(f)
-        print(f"Queen Status: {queen_status}, File Name: {file_name}, Files: {related_files}")
+        print(f"Queen Status: {queen_status}({queen_presence + queen_acceptance}), File Name: {file_name}, Files: {related_files}")
         for rf in related_files:
-            if queen_status == 0:
+            if queen_presence == 0 and queen_acceptance == 0:
                 shutil.copyfile(f"{src_dir}/{rf}", f"{out_dir}/noqueen/{rf}")
-            if queen_status == 3:
+            if queen_presence == 1 and queen_acceptance == 2:
                 shutil.copyfile(f"{src_dir}/{rf}", f"{out_dir}/queen/{rf}")
+            # if queen_status == 0:
+            #     shutil.copyfile(f"{src_dir}/{rf}", f"{out_dir}/noqueen/{rf}")
+            # if queen_status == 3:
+            #     shutil.copyfile(f"{src_dir}/{rf}", f"{out_dir}/queen/{rf}")
 
 
 def create_segmented_dataset_from_dir(orig_dir: str, out_dir: str):

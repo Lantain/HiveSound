@@ -5,6 +5,7 @@ import numpy as np
 import librosa.display as ld
 import tensorflow as tf
 from tensorflow import keras
+import os
 
 def plot_audio(audio, sr: float):
 	n_fft = 2048
@@ -147,14 +148,30 @@ def compare_spectrograms(path1, path2):
     D = librosa.amplitude_to_db(np.abs(librosa.stft(y1)), ref=np.max)
     librosa.display.specshow(D, sr=sr1, x_axis='time', y_axis='log', ax=axs[0])
     # axs[0].imshow(D, aspect='auto', origin='lower')
-    axs[0].set_title('Spectrogram 1')
+    axs[0].set_title(f'Sp {os.path.basename(path1)}')
 
     # Plot the second spectrogram
     D = librosa.amplitude_to_db(np.abs(librosa.stft(y2)), ref=np.max)
     librosa.display.specshow(D, sr=sr2, x_axis='time', y_axis='log', ax=axs[1])
-    axs[1].set_title('Spectrogram 2')
+    axs[1].set_title(f'Sp {os.path.basename(path2)}')
 
     plt.show()
+
+
+def show_all_spectrograms(dir):
+	files = os.listdir(dir)
+	i = 0
+	cols = 2
+	rows = len(files) // cols
+	fig, axs = plt.subplots(rows, cols, figsize=(20, 600))
+	for file in files:
+		ax = axs[i // cols][i % cols]
+		y, sr = librosa.load(f"{dir}/{file}")
+		D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
+		# librosa.display.specshow(D, sr=sr, x_axis='time', y_axis='log', ax=ax)
+		librosa.display.specshow(D, sr=sr, x_axis='time', ax=ax)
+		ax.set_title(f'Sp {os.path.basename(file)}')
+		i += 1
 
 def visualize_spectrogram(path):
     y, sr = librosa.load(path)
