@@ -163,13 +163,13 @@ def show_all_spectrograms(dir):
 	i = 0
 	cols = 2
 	rows = len(files) // cols
-	fig, axs = plt.subplots(rows, cols, figsize=(20, 600))
+	fig, axs = plt.subplots(rows, cols, figsize=(20, 60))
 	for file in files:
 		ax = axs[i // cols][i % cols]
 		y, sr = librosa.load(f"{dir}/{file}")
 		D = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
-		# librosa.display.specshow(D, sr=sr, x_axis='time', y_axis='log', ax=ax)
-		librosa.display.specshow(D, sr=sr, x_axis='time', ax=ax)
+		librosa.display.specshow(D, sr=sr, x_axis='time', y_axis='log', ax=ax)
+		# librosa.display.specshow(D, sr=sr, x_axis='time', ax=ax)
 		ax.set_title(f'Sp {os.path.basename(file)}')
 		i += 1
 
