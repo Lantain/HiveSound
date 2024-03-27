@@ -2,6 +2,8 @@ import librosa
 import tensorflow as tf
 from tensorflow.image import resize
 import numpy as np
+import soundfile as sf  # Adding soundfile for saving the file
+import os
 
 def preprocess_mel_item(y, sample_rate: int, target_shape=(128, 128)):
   mel_spectrogram = librosa.feature.melspectrogram(y=y, sr=sample_rate)
@@ -53,3 +55,53 @@ def to_mfccs_dataset(ds):
       map_func=lambda audio,label: (waveform_to_mfcc(audio, 44100, 12), label),
       num_parallel_calls=tf.data.AUTOTUNE
   )
+
+def transform_files_from(from_dir, to_dir, low_hz=1024, attenuation_max=16):
+    files = os.scandir(from_dir)
+    for file in files:
+        basepath = os.path.basename(file)
+        attenuate_frequencies(file, f"{to_dir}/tr_{basepath}", low_hz, attenuation_max)
+
+
+def attenuate_frequencies(file_from, file_to, low_hz=1024, attenuation_max=16):
+    y, sr = librosa.load(file_from)
+    D = librosa.stft(y)
+    frequencies = librosa.fft_frequencies(sr=sr)
+    target_bins = np.where(frequencies >= low_hz)[0]
+    bc = len(target_bins)
+
+    for i in range(0, bc):
+        tb = target_bins[i]
+        x = (i / bc) * attenuation_max
+        atten = (x * x) / attenuation_max
+        af = librosa.db_to_amplitude(-atten)
+        D[[tb], :] *= af
+
+    y_modified = librosa.istft(D)
+    sf.write(file_to, y_modified, sr)
+             
+
+def pitch_files_from(from_dir, to_dir, pitch=5):
+    files = os.scandir(from_dir)
+    for file in files:
+        y, sr = librosa.load(file)
+        y_shifted = librosa.effects.pitch_shift(y, sr=sr, n_steps=pitch)
+        basepath = os.path.basename(file)
+        sf.write(f"{to_dir}/ptch_{basepath}", y_shifted, sr)
+
+# y, sr = librosa.load(file)
+# D = librosa.stft(y)
+# frequencies = librosa.fft_frequencies(sr=sr)
+# target_bins = np.where(frequencies >= low_hz)[0]
+# bc = len(target_bins)
+
+# for i in range(0, bc):
+#     tb = target_bins[i]
+#     x = (i / bc) * attenuation_max
+#     atten = (x * x) / attenuation_max
+#     af = librosa.db_to_amplitude(-atten)
+#     D[[tb], :] *= af
+
+# y_modified = librosa.istft(D)
+
+# sf.write(f"{to_dir}/tr_{basepath}", y_modified, sr)
