@@ -1,6 +1,7 @@
 import librosa
 import tensorflow as tf
 from tensorflow.image import resize
+from audiomentations import Compose, AddGaussianNoise, TimeStretch, PitchShift, Shift, Gain, LoudnessNormalization
 import numpy as np
 import soundfile as sf  # Adding soundfile for saving the file
 import os
@@ -27,7 +28,8 @@ def waveform_to_mfcc(waveform, sample_rate=44100, num_mfccs=16):
   spectrograms = tf.abs(stfts)
   num_spectrogram_bins = stfts.shape[-1]#.value
   print(num_spectrogram_bins, sample_rate)
-  lower_edge_hertz, upper_edge_hertz, num_mel_bins = 80.0, 7600.0, 80
+  # lower_edge_hertz, upper_edge_hertz, num_mel_bins = 80.0, 7600.0, 80
+  lower_edge_hertz, upper_edge_hertz, num_mel_bins = 80.0, 5600.0, 80
   # Warp the linear scale spectrograms into the mel-scale.
   linear_to_mel_weight_matrix = tf.signal.linear_to_mel_weight_matrix(
   num_mel_bins, num_spectrogram_bins, sample_rate, lower_edge_hertz,
@@ -82,12 +84,40 @@ def attenuate_frequencies(file_from, file_to, low_hz=1024, attenuation_max=16):
              
 
 def pitch_files_from(from_dir, to_dir, pitch=5):
+    os.makedirs(to_dir, exist_ok=True)
     files = os.scandir(from_dir)
     for file in files:
         y, sr = librosa.load(file)
         y_shifted = librosa.effects.pitch_shift(y, sr=sr, n_steps=pitch)
         basepath = os.path.basename(file)
         sf.write(f"{to_dir}/ptch_{basepath}", y_shifted, sr)
+
+
+def depitch_files_from(from_dir, to_dir, pitch=5):
+    os.makedirs(to_dir, exist_ok=True)
+    files = os.scandir(from_dir)
+    for file in files:
+        y, sr = librosa.load(file)
+        y_shifted = librosa.effects.pitch_shift(y, sr=sr, n_steps=-pitch)
+        basepath = os.path.basename(file)
+        sf.write(f"{to_dir}/deptch_{basepath}", y_shifted, sr)
+
+def augment_dir(from_dir, to_dir):
+    os.makedirs(to_dir, exist_ok=True)
+    files = os.scandir(from_dir)
+    for file in files:
+        y, sr = librosa.load(file)
+        augment = Compose([
+          AddGaussianNoise(min_amplitude=0.001, max_amplitude=0.015, p=0.5),
+          PitchShift(min_semitones=-4, max_semitones=4, p=0.5),
+          Gain(min_gain_db=-4, max_gain_db=12),
+          LoudnessNormalization()
+        ])
+        y_augmented = augment(samples=y, sample_rate=sr)
+        basepath = os.path.basename(file)
+        sf.write(f"{to_dir}/aug_{basepath}", y_augmented, sr)
+
+    
 
 # y, sr = librosa.load(file)
 # D = librosa.stft(y)
