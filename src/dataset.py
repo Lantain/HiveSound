@@ -26,6 +26,7 @@ def dataset_tf(dir: str, validation_split=0.2, batch_size=32):
         batch_size=batch_size,
         validation_split=validation_split,
         output_sequence_length=4000,
+        shuffle=True,
         seed=0,
         labels='inferred',
         subset='both'

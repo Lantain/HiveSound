@@ -8,7 +8,7 @@ from pydub import AudioSegment
 from src.dataset import segments_from_audio_file
 
 DS_DIR = "./dataset/archive" #"./dataset/ds" #"./dataset/archive" # "./dataset/ds" # "./dataset/archive"
-OUT_DIR = "./dataset/osbh_pure"
+OUT_DIR = "./dataset/osbh_new"
 class Section:
     time_from: float
     time_to: float
@@ -22,7 +22,7 @@ class Section:
         self.time_to = time_to
         self.label = label
         if src.find("Missing Queen") != -1 or src.find("NO_QueenBee") != -1:
-            self.status = "no_queen"
+            self.status = "noqueen"
         elif src.find("QueenBee") != -1:
             self.status = "queen"
         elif src.find("Swarming") != -1:
