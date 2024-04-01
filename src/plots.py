@@ -76,7 +76,13 @@ def plot_spectrograms(spectrograms: list, spectrogram_labels: list, classes: lis
 		ax = axes[r][c]
 		plot_spectrogram(spectrograms[i].numpy(), ax)
 		ax.set_title(classes[spectrogram_labels[i].numpy()])
+		ax.xaxis.set_tick_params(labelbottom=False)
+		ax.yaxis.set_tick_params(labelleft=False)
+		ax.set_xticks([])
+		ax.set_yticks([])
 
+	plt.xticks([])  
+	plt.yticks([])  
 	plt.show()
 
 def plot_mfccs(mfccs: list, mfccs_labels: list, classes: list):
@@ -91,7 +97,13 @@ def plot_mfccs(mfccs: list, mfccs_labels: list, classes: list):
 		ax = axes[r][c]
 		plot_mfcc(mfccs[i].numpy(), ax)
 		ax.set_title(classes[mfccs_labels[i].numpy()])
+		ax.xaxis.set_tick_params(labelbottom=False)
+		ax.yaxis.set_tick_params(labelleft=False)
+		ax.set_xticks([])
+		ax.set_yticks([])
 
+	plt.xticks([])  
+	plt.yticks([])  
 	plt.show()
 
 def show_mfccs(ds, classes):
