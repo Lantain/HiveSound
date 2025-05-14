@@ -7,7 +7,7 @@ import librosa
 import math
 import random
 import tensorflow_io as tfio
-
+from src.audio import to_mfccs_dataset, to_spectrogram_dataset
 from src.audio import to_spectrogram_dataset, preprocess_mel_item, waveform_to_spectrogram, waveform_to_mfcc
 from pydub import AudioSegment
 
@@ -20,14 +20,14 @@ def squeeze(audio, labels):
   audio = tf.squeeze(audio, axis=-1)
   return audio, labels
 
-def dataset_tf(dir: str, validation_split=0.2, batch_size=32):
+def dataset_tf(dir: str, validation_split=0.2, batch_size=32, seed=5):
     train_ds, val_ds = tf.keras.utils.audio_dataset_from_directory(
         directory=dir,
         batch_size=batch_size,
         validation_split=validation_split,
         output_sequence_length=4000,
         shuffle=True,
-        seed=0,
+        seed=seed,
         labels='inferred',
         subset='both'
     )
@@ -89,7 +89,6 @@ def validation_tf(dir: str):
         print('Spectrogram shape:', spectrogram.shape)
 
     return ds
-
 
 def load_data(data_dir, classes): 
     data = []
@@ -243,7 +242,113 @@ def validate_on(dir: str, model):
             mid_preds = np.array(predictions) / len(mfccs)
             print(f"File {label}/{file} predictions: NQ:{mid_preds[0]:.2f}  Q:{mid_preds[1]:.2f}")
 
+OSBH_PATH = './dataset/tobee_osbh'
+NUHI_PATH = './dataset/tobee_nuhive'
 
+def balance_dataset(dataset, target_ratio=0.5):
+    """
+    Balance the dataset to have equal number of queen and noqueen samples
+    """
+    # First unbatch the dataset to work with individual examples
+    unbatched_ds = dataset.unbatch()
+    
+    # Count the number of samples for each class
+    queen_count = 0
+    noqueen_count = 0
+    total_count = 0
+    
+    # Iterate through the dataset to count samples
+    for _, label in unbatched_ds:
+        if label.numpy() == 0:  # Assuming 0 is noqueen
+            noqueen_count += 1
+        else:  # Assuming 1 is queen
+            queen_count += 1
+        total_count += 1
+    
+    # Determine the target count (use the minority class count)
+    target_count = min(queen_count, noqueen_count)
+    
+    # Create separate datasets for each class
+    queen_ds = unbatched_ds.filter(lambda x, y: tf.equal(y, 1))
+    noqueen_ds = unbatched_ds.filter(lambda x, y: tf.equal(y, 0))
+    
+    # Take only target_count samples from each class
+    queen_ds = queen_ds.take(target_count)
+    noqueen_ds = noqueen_ds.take(target_count)
+    
+    # Combine the balanced datasets
+    balanced_dataset = queen_ds.concatenate(noqueen_ds)
+    
+    # Shuffle the balanced dataset
+    balanced_dataset = balanced_dataset.shuffle(buffer_size=2*target_count)
+    
+    # Apply batching and prefetching for performance
+    batch_size = 16  # Using the same batch size as in the original dataset
+    balanced_dataset = balanced_dataset.batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    
+    return balanced_dataset
+
+def show_dataset_balance(train_mfccs_ds):
+    # Count the number of samples for each class
+    queen_count = 0
+    noqueen_count = 0
+    total_count = 0
+
+    # Iterate through the dataset to count samples
+    for _, labels in train_mfccs_ds.unbatch():
+        if labels.numpy() == 0:  # Assuming 0 is noqueen
+            noqueen_count += 1
+        else:  # Assuming 1 is queen
+            queen_count += 1
+        total_count += 1
+
+    # Calculate percentages
+    queen_percentage = (queen_count / total_count) * 100
+    noqueen_percentage = (noqueen_count / total_count) * 100
+    print(f"Queen: {queen_percentage:.0f}% ({queen_count}), Noqueen: {noqueen_percentage:.0f}% ({noqueen_count})")
+
+
+
+def mfccs_dataset(dir: str, validation_split=0.2, batch_size=32, balance=True, seed=5):
+    train_ds, val_ds, label_names = dataset_tf(dir, validation_split, batch_size, seed)
+    print("\n===== MFCCs (num_spectrogram_bins, sample_rate, num_mfccs) ====")
+    train_mfccs_ds = to_mfccs_dataset(train_ds)
+
+    val_mfccs_ds = to_mfccs_dataset(val_ds)
+    train_mfccs_ds = train_mfccs_ds.map(lambda x, y: (tf.expand_dims(x, -1), y))
+    val_mfccs_ds = val_mfccs_ds.map(lambda x, y: (tf.expand_dims(x, -1), y))
+    for example_spectrograms, example_spect_labels in train_mfccs_ds.take(1):
+        input_shape = example_spectrograms.shape[1:]
+    train_mfccs_ds = train_mfccs_ds.cache().shuffle(10000).prefetch(tf.data.AUTOTUNE)
+    val_mfccs_ds = val_mfccs_ds.cache().prefetch(tf.data.AUTOTUNE)
+    if balance: 
+        print("\nBefore balancing")
+        show_dataset_balance(train_mfccs_ds)
+        train_mfccs_ds = balance_dataset(train_mfccs_ds)
+        print("\nAfter balancing")
+        show_dataset_balance(train_mfccs_ds)
+    print("\n ==== MFCCs input shape ==== ")
+    print(input_shape)
+    return train_mfccs_ds, val_mfccs_ds, label_names, input_shape
+
+def stft_dataset(dir: str, validation_split=0.2, batch_size=32, balance=True, seed=5):
+    train_ds, val_ds, label_names = dataset_tf(dir, validation_split, batch_size, seed)
+    train_stft_ds = to_spectrogram_dataset(train_ds)
+    val_stft_ds = to_spectrogram_dataset(val_ds)
+    for example_spectrograms, example_spect_labels in train_stft_ds.take(1):
+        input_shape = example_spectrograms.shape[1:]
+    print("\n ==== STFT input shape ==== ")
+    print(input_shape)
+    if balance:
+        print("\nBefore balancing")
+        show_dataset_balance(train_stft_ds)
+        train_stft_ds = balance_dataset(train_stft_ds)
+        print("After balancing")
+        show_dataset_balance(train_stft_ds)
+    
+    train_stft_ds = train_stft_ds.cache().shuffle(10000).prefetch(tf.data.AUTOTUNE)
+    val_stft_ds = val_stft_ds.cache().prefetch(tf.data.AUTOTUNE)
+    return train_stft_ds, val_stft_ds, label_names, input_shape
 
 
 
